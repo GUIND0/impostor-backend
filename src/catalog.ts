@@ -13,8 +13,8 @@ export function publicCategories() {
 }
 
 export async function reloadCatalog() {
-  const rows = await sql<{ id: string; name: string; word: string; imposter_word: string | null }[]>`
-    select c.id, c.name, w.word, w.imposter_word
+  const rows = await sql<{ id: string; name: string; word: string; similar_word: string | null }[]>`
+    select c.id, c.name, w.word, w.similar_word
     from categories c join words w on w.category_id = c.id
     where c.active
     order by c.name, w.created_at`;
@@ -25,7 +25,7 @@ export async function reloadCatalog() {
       cat = { id: r.id, label: r.name, words: [] };
       map.set(r.id, cat);
     }
-    cat.words.push({ word: r.word, imposterWord: r.imposter_word });
+    cat.words.push({ word: r.word, similarWord: r.similar_word || null });
   }
   cache = [...map.values()];
 }
@@ -37,10 +37,10 @@ export async function seedCatalog() {
     for (const cat of seedCategories) {
       const id = crypto.randomUUID();
       await tx`insert into categories (id, name) values (${id}, ${cat.label})`;
-      for (const [word, imposterWord] of cat.pairs) {
+      for (const [word, similarWord] of cat.pairs) {
         await tx`
-          insert into words (id, category_id, word, imposter_word)
-          values (${crypto.randomUUID()}, ${id}, ${word}, ${imposterWord})`;
+          insert into words (id, category_id, word, similar_word)
+          values (${crypto.randomUUID()}, ${id}, ${word}, ${similarWord})`;
       }
     }
   });
@@ -51,14 +51,14 @@ export interface AdminCategory {
   name: string;
   active: boolean;
   createdAt: Date;
-  words: { id: string; word: string; imposterWord: string | null }[];
+  words: { id: string; word: string; similarWord: string | null }[];
 }
 
 export async function adminCategories(): Promise<AdminCategory[]> {
   const cats = await sql<{ id: string; name: string; active: boolean; created_at: Date }[]>`
     select id, name, active, created_at from categories order by name`;
-  const words = await sql<{ id: string; category_id: string; word: string; imposter_word: string | null }[]>`
-    select id, category_id, word, imposter_word from words order by created_at`;
+  const words = await sql<{ id: string; category_id: string; word: string; similar_word: string | null }[]>`
+    select id, category_id, word, similar_word from words order by created_at`;
   return cats.map((c) => ({
     id: c.id,
     name: c.name,
@@ -66,7 +66,7 @@ export async function adminCategories(): Promise<AdminCategory[]> {
     createdAt: c.created_at,
     words: words
       .filter((w) => w.category_id === c.id)
-      .map((w) => ({ id: w.id, word: w.word, imposterWord: w.imposter_word })),
+      .map((w) => ({ id: w.id, word: w.word, similarWord: w.similar_word })),
   }));
 }
 
@@ -94,23 +94,23 @@ export async function deleteCategory(id: string) {
   return rows.length > 0;
 }
 
-export async function addWords(categoryId: string, pairs: { word: string; imposterWord: string | null }[]) {
+export async function addWords(categoryId: string, pairs: { word: string; similarWord: string }[]) {
   const [cat] = await sql`select id from categories where id = ${categoryId}`;
   if (!cat) return null;
   await sql.begin(async (tx) => {
     for (const p of pairs) {
       await tx`
-        insert into words (id, category_id, word, imposter_word)
-        values (${crypto.randomUUID()}, ${categoryId}, ${p.word}, ${p.imposterWord})`;
+        insert into words (id, category_id, word, similar_word)
+        values (${crypto.randomUUID()}, ${categoryId}, ${p.word}, ${p.similarWord})`;
     }
   });
   await reloadCatalog();
   return pairs.length;
 }
 
-export async function updateWord(id: string, data: { word: string; imposterWord: string | null }) {
+export async function updateWord(id: string, data: { word: string; similarWord: string }) {
   const rows = await sql`
-    update words set word = ${data.word}, imposter_word = ${data.imposterWord}
+    update words set word = ${data.word}, similar_word = ${data.similarWord}
     where id = ${id} returning id`;
   await reloadCatalog();
   return rows.length > 0;

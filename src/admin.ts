@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
+import { normalizeWord } from "./game/text.js";
 import {
   addWords,
   adminCategories,
@@ -38,15 +39,14 @@ function samePassword(given: string) {
   return crypto.timingSafeEqual(a, b);
 }
 
-const text = (max: number) => z.string().trim().min(1, "Champ obligatoire").max(max, "Texte trop long");
-const optionalText = z
-  .string()
-  .trim()
-  .max(60, "Texte trop long")
-  .nullish()
-  .transform((v) => (v ? v : null));
+const text = (max: number) =>
+  z.string({ error: "Champ obligatoire" }).trim().min(1, "Champ obligatoire").max(max, "Texte trop long");
 const idParams = z.object({ id: z.string().uuid() });
-const pairSchema = z.object({ word: text(60), imposterWord: optionalText });
+const pairSchema = z
+  .object({ word: text(60), similarWord: text(60) })
+  .refine((p) => normalizeWord(p.word) !== normalizeWord(p.similarWord), {
+    message: "Les deux mots d'une paire doivent être différents",
+  });
 
 export async function adminRoutes(app: FastifyInstance) {
   const guard = async (req: FastifyRequest, reply: FastifyReply) => {

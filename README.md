@@ -32,8 +32,10 @@ se gèrent depuis une interface d'administration web.
 | Mot similaire (par défaut) | L'imposteur reçoit un mot proche de celui des autres et ne sait pas qu'il est l'imposteur. Pas de devinette en fin de manche. |
 | Classique | L'imposteur ne reçoit aucun mot, sait qu'il est l'imposteur et peut tenter de deviner le mot après le vote. |
 
-En mode mot similaire, seuls les mots qui ont un mot d'imposteur sont tirés. Si la catégorie choisie n'en
-contient aucun, la manche se joue en mode classique.
+Les mots sont rangés par paires de mots proches (par exemple Plage et Piscine). À chaque manche, le serveur
+tire au hasard lequel des deux mots reçoivent les joueurs et lequel reçoit l'imposteur : la répartition
+n'est connue de personne à l'avance, y compris depuis l'administration. En mode classique, les joueurs
+reçoivent l'un des deux mots, tiré au hasard, et l'imposteur aucun.
 
 ## Points
 
@@ -72,8 +74,10 @@ Elle permet de :
 
 - consulter le nombre de joueurs, de parties, de catégories et de mots ;
 - créer, renommer, masquer ou supprimer une catégorie ;
-- ajouter, modifier ou supprimer des mots, chacun avec un mot similaire pour l'imposteur ;
-- importer des mots en masse, un par ligne, au format `Plage ; Piscine`.
+- ajouter, modifier ou supprimer des paires de deux mots proches, sans indiquer lequel ira à l'imposteur ;
+- importer des paires en masse, une par ligne, au format `Plage ; Piscine`.
+
+Les deux mots d'une paire sont obligatoires et doivent être différents.
 
 Les modifications sont prises en compte immédiatement pour les nouvelles manches. Au premier démarrage,
 la base est remplie avec 8 catégories et environ 170 paires de mots.
@@ -105,9 +109,9 @@ Routes d'administration (jeton obtenu avec `/api/admin/login`) :
 | POST | `/api/admin/categories` | Création `{ "name": "..." }` |
 | PATCH | `/api/admin/categories/:id` | Modification `{ "name", "active" }` |
 | DELETE | `/api/admin/categories/:id` | Suppression avec ses mots |
-| POST | `/api/admin/categories/:id/words` | Ajout `{ "words": [{ "word", "imposterWord" }] }` |
-| PUT | `/api/admin/words/:id` | Modification d'un mot |
-| DELETE | `/api/admin/words/:id` | Suppression d'un mot |
+| POST | `/api/admin/categories/:id/words` | Ajout de paires `{ "words": [{ "word", "similarWord" }] }` |
+| PUT | `/api/admin/words/:id` | Modification d'une paire `{ "word", "similarWord" }` |
+| DELETE | `/api/admin/words/:id` | Suppression d'une paire |
 
 Les fichiers envoyés sont servis sous `/uploads/`.
 

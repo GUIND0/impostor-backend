@@ -7,12 +7,12 @@ const catalog: Category[] = [
     id: "animaux",
     label: "Animaux",
     words: [
-      { word: "Lion", imposterWord: "Tigre" },
-      { word: "Chat", imposterWord: "Chien" },
-      { word: "Aigle", imposterWord: null },
+      { word: "Lion", similarWord: "Tigre" },
+      { word: "Chat", similarWord: "Chien" },
+      { word: "Aigle", similarWord: null },
     ],
   },
-  { id: "classique", label: "Classique", words: [{ word: "Plage", imposterWord: null }] },
+  { id: "classique", label: "Classique", words: [{ word: "Plage", similarWord: null }] },
 ];
 import { isCorrectGuess, normalizeWord } from "../src/game/text.js";
 
@@ -210,6 +210,87 @@ describe("similar word mode", () => {
     expect(v.round!.result!.imposterWord).toBe(room.round!.imposterWord);
     expect(v.round!.you.isImposter).toBe(true);
     expect(room.members.get(imposter)!.score).toBe(0);
+  });
+
+  it("decides at random which word of the pair goes to the civilians", () => {
+    const pairCatalog: Category[] = [{ id: "duo", label: "Duo", words: [{ word: "Lion", similarWord: "Tigre" }] }];
+    const civilianWords = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) {
+      let t = 0;
+      const room = new Room("SEED", { id: "p1", name: "P1", avatarUrl: null }, () => pairCatalog, seeded(seed * 7919), () => t);
+      for (let i = 2; i <= 4; i++) room.addMember({ id: `p${i}`, name: `P${i}`, avatarUrl: null });
+      room.updateSettings("p1", { imposterMode: "similar", category: "duo", rounds: 1 });
+      room.start("p1");
+      const round = room.round!;
+      expect(new Set([round.word, round.imposterWord])).toEqual(new Set(["Lion", "Tigre"]));
+      civilianWords.add(round.word);
+      for (const id of room.members.keys()) {
+        const v = room.view(id).round!;
+        expect(v.you.isImposter).toBe(false);
+        expect(v.you.word).toBe(id === round.imposterId ? round.imposterWord : round.word);
+      }
+      t += 1;
+    }
+    expect(civilianWords).toEqual(new Set(["Lion", "Tigre"]));
+  });
+
+  it("uses either word of a pair for the civilians in classic mode", () => {
+    const pairCatalog: Category[] = [{ id: "duo", label: "Duo", words: [{ word: "Lion", similarWord: "Tigre" }] }];
+    const civilianWords = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) {
+      const room = new Room("SEED", { id: "p1", name: "P1", avatarUrl: null }, () => pairCatalog, seeded(seed * 104729));
+      for (let i = 2; i <= 3; i++) room.addMember({ id: `p${i}`, name: `P${i}`, avatarUrl: null });
+      room.updateSettings("p1", { imposterMode: "none", category: "duo" });
+      room.start("p1");
+      const round = room.round!;
+      expect(round.mode).toBe("none");
+      expect(round.imposterWord).toBeNull();
+      expect(["Lion", "Tigre"]).toContain(round.word);
+      expect(room.view(round.imposterId).round!.you.word).toBeNull();
+      civilianWords.add(round.word);
+    }
+    expect(civilianWords).toEqual(new Set(["Lion", "Tigre"]));
+  });
+
+  it("does not replay the same pair before the category is exhausted", () => {
+    const { room } = setup();
+    room.updateSettings("p1", { imposterMode: "similar", category: "animaux", rounds: 2, clueTurns: 1 });
+    room.start("p1");
+    const first = new Set([room.round!.word, room.round!.imposterWord]);
+    playToVoting(room);
+    const imposter = room.round!.imposterId;
+    for (const id of room.members.keys()) room.vote(id, id === imposter ? [...room.members.keys()].find((x) => x !== id)! : imposter);
+    room.nextRound("p1");
+    const second = new Set([room.round!.word, room.round!.imposterWord]);
+    expect([...second].some((w) => first.has(w))).toBe(false);
+  });
+
+  it("treats a pair entered in both directions as the same pair", () => {
+    const dupCatalog: Category[] = [
+      {
+        id: "dup",
+        label: "Doublons",
+        words: [
+          { word: "Fiche ATP", similarWord: "Fiche incident" },
+          { word: "fiche incident", similarWord: "fiche ATP" },
+          { word: "Plage", similarWord: "Piscine" },
+        ],
+      },
+    ];
+    for (let seed = 1; seed <= 30; seed++) {
+      const room = new Room("DUP", { id: "p1", name: "P1", avatarUrl: null }, () => dupCatalog, seeded(seed * 31));
+      for (let i = 2; i <= 3; i++) room.addMember({ id: `p${i}`, name: `P${i}`, avatarUrl: null });
+      room.updateSettings("p1", { imposterMode: "similar", category: "dup", rounds: 2, clueTurns: 1 });
+      room.start("p1");
+      const first = room.round!.word.toLowerCase();
+      playToVoting(room);
+      const imposter = room.round!.imposterId;
+      for (const id of room.members.keys()) room.vote(id, id === imposter ? [...room.members.keys()].find((x) => x !== id)! : imposter);
+      room.nextRound("p1");
+      const second = room.round!.word.toLowerCase();
+      const isFiche = (w: string) => w.startsWith("fiche");
+      expect(isFiche(first) && isFiche(second)).toBe(false);
+    }
   });
 
   it("falls back to the classic mode when the category has no similar words", () => {

@@ -127,6 +127,8 @@ header {
   background: rgba(239, 68, 68, .15);
   color: var(--danger);
   margin-left: 6px;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .detail-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
@@ -161,7 +163,11 @@ td input { padding: 7px 10px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 16px 0; }
   .layout { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 32px; }
   .add-row { grid-template-columns: 1fr; }
-  th:nth-child(2), td:nth-child(2) { width: 45%; }
+  table { table-layout: fixed; }
+  th, td { overflow-wrap: break-word; hyphens: auto; }
+  th:last-child, td.actions { width: 96px; }
+  td.actions { white-space: normal; }
+  td.actions button { display: block; width: 100%; padding: 4px 0; text-align: right; }
 }
 </style>
 </head>
@@ -186,7 +192,7 @@ td input { padding: 7px 10px; }
     <div class="stat"><strong id="statPlayers">-</strong><span>Joueurs</span></div>
     <div class="stat"><strong id="statGames">-</strong><span>Parties terminées</span></div>
     <div class="stat"><strong id="statCategories">-</strong><span>Catégories</span></div>
-    <div class="stat"><strong id="statWords">-</strong><span>Mots</span></div>
+    <div class="stat"><strong id="statWords">-</strong><span>Paires de mots</span></div>
   </div>
 
   <div class="layout">
@@ -208,24 +214,25 @@ td input { padding: 7px 10px; }
           <button class="danger" id="deleteCategory">Supprimer</button>
         </div>
 
-        <h3 class="section-title">Ajouter un mot</h3>
+        <h3 class="section-title">Ajouter une paire</h3>
+        <p class="hint">Deux mots proches. À chaque manche, le jeu tire au hasard celui des joueurs et celui de l'imposteur.</p>
         <form class="add-row" id="addWordForm">
-          <input id="newWord" placeholder="Mot des joueurs" maxlength="60" required>
-          <input id="newImposterWord" placeholder="Mot de l'imposteur (similaire)" maxlength="60">
+          <input id="newWord" placeholder="Premier mot" maxlength="60" required>
+          <input id="newSimilarWord" placeholder="Mot similaire" maxlength="60" required>
           <button class="primary" type="submit">Ajouter</button>
         </form>
 
-        <h3 class="section-title">Mots (<span id="wordCount">0</span>)</h3>
+        <h3 class="section-title">Paires (<span id="wordCount">0</span>)</h3>
         <table>
           <thead>
-            <tr><th>Mot des joueurs</th><th>Mot de l'imposteur</th><th></th></tr>
+            <tr><th>Mot</th><th>Mot similaire</th><th></th></tr>
           </thead>
           <tbody id="wordRows"></tbody>
         </table>
-        <div class="empty hidden" id="noWords">Aucun mot dans cette catégorie</div>
+        <div class="empty hidden" id="noWords">Aucune paire dans cette catégorie</div>
 
         <h3 class="section-title">Import en masse</h3>
-        <p class="hint">Un mot par ligne. Séparez le mot de l'imposteur par un point-virgule, par exemple : Plage ; Piscine</p>
+        <p class="hint">Une paire par ligne, les deux mots séparés par un point-virgule, par exemple : Plage ; Piscine</p>
         <textarea id="bulkText" placeholder="Lion ; Tigre&#10;Girafe ; Zèbre"></textarea>
         <div class="bulk-actions"><button class="primary" id="bulkImport">Importer</button></div>
       </div>
@@ -306,7 +313,7 @@ function renderList() {
     }
     const count = document.createElement("span");
     count.className = "count";
-    count.textContent = c.words.length + " mot" + (c.words.length > 1 ? "s" : "");
+    count.textContent = c.words.length + " paire" + (c.words.length > 1 ? "s" : "");
     btn.append(name, count);
     btn.addEventListener("click", () => {
       state.selectedId = c.id;
@@ -333,24 +340,36 @@ function renderDetail() {
   $("noWords").classList.toggle("hidden", cat.words.length > 0);
   const rows = $("wordRows");
   rows.replaceChildren();
-  for (const w of cat.words) rows.appendChild(wordRow(w));
+  const keyOf = (w) => [w.word, w.similarWord || ""]
+    .map((v) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim())
+    .sort()
+    .join("|");
+  const seen = new Map();
+  for (const w of cat.words) seen.set(keyOf(w), (seen.get(keyOf(w)) || 0) + 1);
+  for (const w of cat.words) rows.appendChild(wordRow(w, seen.get(keyOf(w)) > 1));
 }
 
-function wordRow(w) {
+function wordRow(w, duplicate) {
   const tr = document.createElement("tr");
   const wordCell = document.createElement("td");
-  const imposterCell = document.createElement("td");
+  const similarCell = document.createElement("td");
   const actions = document.createElement("td");
   actions.className = "actions";
 
   const viewMode = () => {
     wordCell.textContent = w.word;
-    imposterCell.textContent = w.imposterWord || "";
-    if (!w.imposterWord) {
-      const none = document.createElement("span");
-      none.className = "muted";
-      none.textContent = "aucun";
-      imposterCell.appendChild(none);
+    similarCell.textContent = w.similarWord || "";
+    if (!w.similarWord) {
+      const missing = document.createElement("span");
+      missing.className = "badge";
+      missing.textContent = "à compléter";
+      similarCell.appendChild(missing);
+    }
+    if (duplicate) {
+      const dup = document.createElement("span");
+      dup.className = "badge";
+      dup.textContent = "doublon";
+      similarCell.appendChild(dup);
     }
     const edit = document.createElement("button");
     edit.className = "ghost";
@@ -360,7 +379,7 @@ function wordRow(w) {
     del.className = "ghost";
     del.textContent = "Supprimer";
     del.addEventListener("click", async () => {
-      if (!confirm("Supprimer « " + w.word + " » ?")) return;
+      if (!confirm("Supprimer la paire « " + w.word + (w.similarWord ? " / " + w.similarWord : "") + " » ?")) return;
       try {
         await api("/api/admin/words/" + w.id, { method: "DELETE" });
         await refresh();
@@ -373,11 +392,11 @@ function wordRow(w) {
     const wordInput = document.createElement("input");
     wordInput.value = w.word;
     wordInput.maxLength = 60;
-    const imposterInput = document.createElement("input");
-    imposterInput.value = w.imposterWord || "";
-    imposterInput.maxLength = 60;
+    const similarInput = document.createElement("input");
+    similarInput.value = w.similarWord || "";
+    similarInput.maxLength = 60;
     wordCell.replaceChildren(wordInput);
-    imposterCell.replaceChildren(imposterInput);
+    similarCell.replaceChildren(similarInput);
     const save = document.createElement("button");
     save.className = "primary";
     save.textContent = "Enregistrer";
@@ -389,14 +408,14 @@ function wordRow(w) {
       try {
         await api("/api/admin/words/" + w.id, {
           method: "PUT",
-          body: { word: wordInput.value, imposterWord: imposterInput.value },
+          body: { word: wordInput.value, similarWord: similarInput.value },
         });
         await refresh();
-        toast("Mot enregistré");
+        toast("Paire enregistrée");
       } catch (e) { toast(e.message); }
     };
     save.addEventListener("click", submit);
-    for (const input of [wordInput, imposterInput]) {
+    for (const input of [wordInput, similarInput]) {
       input.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter") submit();
         if (ev.key === "Escape") viewMode();
@@ -407,7 +426,7 @@ function wordRow(w) {
   };
 
   viewMode();
-  tr.append(wordCell, imposterCell, actions);
+  tr.append(wordCell, similarCell, actions);
   return tr;
 }
 
@@ -461,7 +480,7 @@ $("categoryActive").addEventListener("change", async () => {
 $("deleteCategory").addEventListener("click", async () => {
   const cat = selected();
   if (!cat) return;
-  if (!confirm("Supprimer la catégorie « " + cat.name + " » et ses " + cat.words.length + " mots ?")) return;
+  if (!confirm("Supprimer la catégorie « " + cat.name + " » et ses " + cat.words.length + " paires ?")) return;
   try {
     await api("/api/admin/categories/" + cat.id, { method: "DELETE" });
     state.selectedId = null;
@@ -476,10 +495,10 @@ $("addWordForm").addEventListener("submit", async (ev) => {
   try {
     await api("/api/admin/categories/" + cat.id + "/words", {
       method: "POST",
-      body: { words: [{ word: $("newWord").value, imposterWord: $("newImposterWord").value }] },
+      body: { words: [{ word: $("newWord").value, similarWord: $("newSimilarWord").value }] },
     });
     $("newWord").value = "";
-    $("newImposterWord").value = "";
+    $("newSimilarWord").value = "";
     $("newWord").focus();
     await refresh();
   } catch (e) { toast(e.message); }
@@ -488,17 +507,26 @@ $("addWordForm").addEventListener("submit", async (ev) => {
 $("bulkImport").addEventListener("click", async () => {
   const cat = selected();
   if (!cat) return;
-  const words = $("bulkText").value
-    .split("\n")
-    .map((line) => line.split(";"))
-    .map(([word, imposterWord]) => ({ word: (word || "").trim(), imposterWord: (imposterWord || "").trim() }))
-    .filter((p) => p.word);
-  if (!words.length) return toast("Aucun mot à importer");
+  const words = [];
+  const invalid = [];
+  $("bulkText").value.split("\n").forEach((line, index) => {
+    if (!line.trim()) return;
+    const parts = line.split(";").map((part) => part.trim());
+    if (parts.length !== 2 || !parts[0] || !parts[1] || parts[0].toLowerCase() === parts[1].toLowerCase()) {
+      invalid.push(index + 1);
+      return;
+    }
+    words.push({ word: parts[0], similarWord: parts[1] });
+  });
+  if (invalid.length) {
+    return toast("Ligne" + (invalid.length > 1 ? "s" : "") + " " + invalid.join(", ") + " : il faut deux mots différents séparés par un point-virgule");
+  }
+  if (!words.length) return toast("Aucune paire à importer");
   try {
     const { added } = await api("/api/admin/categories/" + cat.id + "/words", { method: "POST", body: { words } });
     $("bulkText").value = "";
     await refresh();
-    toast(added + " mot" + (added > 1 ? "s" : "") + " importé" + (added > 1 ? "s" : ""));
+    toast(added + " paire" + (added > 1 ? "s" : "") + " importée" + (added > 1 ? "s" : ""));
   } catch (e) { toast(e.message); }
 });
 

@@ -1,6 +1,6 @@
 export interface WordPair {
   word: string;
-  imposterWord: string | null;
+  similarWord: string | null;
 }
 
 export interface Category {

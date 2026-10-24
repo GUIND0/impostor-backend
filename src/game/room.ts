@@ -1,5 +1,5 @@
 import type { Category } from "./words.js";
-import { isCorrectGuess } from "./text.js";
+import { isCorrectGuess, normalizeWord } from "./text.js";
 
 export type Phase = "lobby" | "reveal" | "clues" | "voting" | "guess" | "results" | "finished";
 
@@ -269,19 +269,24 @@ export class Room {
   private startRound(number: number) {
     const available = this.catalog().filter((c) => c.words.length > 0);
     const wantsSimilar = this.settings.imposterMode === "similar";
-    const eligible = wantsSimilar ? available.filter((c) => c.words.some((w) => w.imposterWord)) : available;
+    const eligible = wantsSimilar ? available.filter((c) => c.words.some((w) => w.similarWord)) : available;
     const category =
       (this.settings.category !== "random" ? this.findCategory(this.settings.category) : undefined) ??
       pick(eligible.length ? eligible : available, this.random);
     let candidatesWords = category.words;
-    if (wantsSimilar && candidatesWords.some((w) => w.imposterWord)) {
-      candidatesWords = candidatesWords.filter((w) => w.imposterWord);
+    if (wantsSimilar && candidatesWords.some((w) => w.similarWord)) {
+      candidatesWords = candidatesWords.filter((w) => w.similarWord);
     }
-    let pool = candidatesWords.filter((w) => !this.usedWords.has(`${category.id}:${w.word}`));
+    const pairKey = (w: { word: string; similarWord: string | null }) =>
+      `${category.id}:${[w.word, w.similarWord ?? ""].map(normalizeWord).sort().join("|")}`;
+    let pool = candidatesWords.filter((w) => !this.usedWords.has(pairKey(w)));
     if (!pool.length) pool = candidatesWords;
     const pair = pick(pool, this.random);
-    this.usedWords.add(`${category.id}:${pair.word}`);
-    const mode: ImposterMode = wantsSimilar && pair.imposterWord ? "similar" : "none";
+    this.usedWords.add(pairKey(pair));
+    const mode: ImposterMode = wantsSimilar && pair.similarWord ? "similar" : "none";
+    const swap = !!pair.similarWord && this.random() < 0.5;
+    const civilianWord = swap ? pair.similarWord! : pair.word;
+    const otherWord = swap ? pair.word : pair.similarWord;
 
     const ids = [...this.members.keys()];
     const last = this.previousImposters[this.previousImposters.length - 1];
@@ -294,8 +299,8 @@ export class Room {
       categoryId: category.id,
       categoryLabel: category.label,
       mode,
-      word: pair.word,
-      imposterWord: mode === "similar" ? pair.imposterWord : null,
+      word: civilianWord,
+      imposterWord: mode === "similar" ? otherWord : null,
       imposterId,
       seen: new Set(),
       order: [],

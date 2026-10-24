@@ -55,10 +55,14 @@ export async function migrate() {
       id uuid primary key,
       category_id uuid not null references categories(id) on delete cascade,
       word text not null,
-      imposter_word text,
+      similar_word text,
       created_at timestamptz not null default now()
     )`;
   await sql`create index if not exists words_category_idx on words(category_id)`;
+  const [legacy] = await sql`
+    select 1 from information_schema.columns
+    where table_schema = current_schema() and table_name = 'words' and column_name = 'imposter_word'`;
+  if (legacy) await sql`alter table words rename column imposter_word to similar_word`;
 }
 
 export async function waitForDatabase(attempts = 30) {
