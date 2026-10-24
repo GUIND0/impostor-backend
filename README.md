@@ -149,11 +149,24 @@ DATABASE_URL=postgres://impostor:changez-moi@localhost:5432/impostor npm run dev
 
 Pour exposer la base en local pendant le développement, ajoutez `ports: ["5432:5432"]` au service `db`.
 
-Tests :
+Tests unitaires du moteur de jeu :
 
 ```bash
 npm test
 ```
+
+Scénarios de bout en bout sur un serveur en marche (connexions Socket.IO réelles) : toutes les
+combinaisons de votes à 3 joueurs dans les deux modes, changements de vote, votes simultanés,
+déconnexion, reconnexion, départ d'un joueur ou de l'hôte, noms identiques, fin du temps de vote
+et votes invalides.
+
+```bash
+URL=http://localhost:3000 npm run test:e2e
+```
+
+Un seul scénario peut être lancé en ajoutant son nom, par exemple `npm run test:e2e -- disconnect`.
+Les profils de test sont préfixés par `Test` ; la création de profils est limitée à 10 par minute
+et par adresse IP.
 
 ## Déploiement
 
