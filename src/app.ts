@@ -10,7 +10,8 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { z } from "zod";
 import { config } from "./config.js";
-import { publicCategories } from "./game/words.js";
+import { publicCategories } from "./catalog.js";
+import { adminRoutes } from "./admin.js";
 import type { RoomManager } from "./game/manager.js";
 import type { PlayerRow } from "./db.js";
 import {
@@ -59,6 +60,14 @@ export async function buildApp(getManager: () => RoomManager | null) {
     immutable: true,
   });
 
+  await app.register(fastifyStatic, {
+    root: config.adminDir,
+    prefix: "/admin/",
+    decorateReply: false,
+    index: ["index.html"],
+  });
+  app.get("/admin", async (_req, reply) => reply.redirect("/admin/"));
+
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     if (err instanceof z.ZodError) {
       return reply.code(400).send({ error: "invalid", message: err.issues[0]?.message ?? "Données invalides" });
@@ -106,6 +115,8 @@ export async function buildApp(getManager: () => RoomManager | null) {
   const syncRoomProfile = (row: PlayerRow) => {
     getManager()?.updateProfile({ id: row.id, name: row.name, avatarUrl: row.avatar_path });
   };
+
+  await adminRoutes(app);
 
   app.get("/health", async () => ({ status: "ok" }));
 

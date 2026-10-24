@@ -1,98 +1,102 @@
+export interface WordPair {
+  word: string;
+  imposterWord: string | null;
+}
+
 export interface Category {
   id: string;
   label: string;
-  words: string[];
+  words: WordPair[];
 }
 
-export const categories: Category[] = [
+export const seedCategories: { label: string; pairs: [string, string][] }[] = [
   {
-    id: "animaux",
     label: "Animaux",
-    words: [
-      "Lion", "Éléphant", "Girafe", "Crocodile", "Pingouin", "Dauphin", "Requin", "Chameau",
-      "Kangourou", "Serpent", "Hibou", "Perroquet", "Tortue", "Zèbre", "Singe", "Ours",
-      "Loup", "Renard", "Lapin", "Cheval", "Vache", "Mouton", "Chat", "Chien", "Abeille",
-      "Papillon", "Araignée", "Hippopotame", "Rhinocéros", "Aigle",
+    pairs: [
+      ["Lion", "Tigre"], ["Éléphant", "Rhinocéros"], ["Girafe", "Zèbre"], ["Crocodile", "Lézard"],
+      ["Pingouin", "Phoque"], ["Dauphin", "Requin"], ["Chameau", "Dromadaire"], ["Kangourou", "Lapin"],
+      ["Serpent", "Ver de terre"], ["Hibou", "Chouette"], ["Perroquet", "Pigeon"], ["Tortue", "Escargot"],
+      ["Singe", "Gorille"], ["Loup", "Chien"], ["Renard", "Chat"], ["Cheval", "Âne"],
+      ["Vache", "Chèvre"], ["Mouton", "Lama"], ["Abeille", "Guêpe"], ["Papillon", "Libellule"],
+      ["Aigle", "Faucon"], ["Hippopotame", "Ours"],
     ],
   },
   {
-    id: "nourriture",
     label: "Nourriture",
-    words: [
-      "Pizza", "Hamburger", "Sushi", "Couscous", "Mafé", "Thiéboudienne", "Croissant", "Baguette",
-      "Chocolat", "Glace", "Fromage", "Spaghetti", "Omelette", "Banane", "Mangue", "Ananas",
-      "Riz", "Poulet braisé", "Attiéké", "Alloco", "Crêpe", "Gâteau", "Salade", "Soupe",
-      "Frites", "Yaourt", "Miel", "Popcorn", "Pain", "Fonio",
+    pairs: [
+      ["Pizza", "Tarte"], ["Hamburger", "Sandwich"], ["Sushi", "Riz"], ["Couscous", "Fonio"],
+      ["Mafé", "Sauce arachide"], ["Thiéboudienne", "Riz au gras"], ["Croissant", "Pain au chocolat"],
+      ["Baguette", "Pain de mie"], ["Chocolat", "Caramel"], ["Glace", "Yaourt"], ["Fromage", "Beurre"],
+      ["Spaghetti", "Macaroni"], ["Omelette", "Crêpe"], ["Banane", "Plantain"], ["Mangue", "Papaye"],
+      ["Ananas", "Noix de coco"], ["Poulet braisé", "Brochette"], ["Attiéké", "Couscous"],
+      ["Alloco", "Frites"], ["Gâteau", "Biscuit"], ["Soupe", "Bouillon"], ["Miel", "Confiture"],
     ],
   },
   {
-    id: "lieux",
     label: "Lieux",
-    words: [
-      "Plage", "Hôpital", "École", "Aéroport", "Marché", "Cinéma", "Stade", "Bibliothèque",
-      "Restaurant", "Banque", "Prison", "Église", "Mosquée", "Piscine", "Zoo", "Désert",
-      "Forêt", "Montagne", "Boulangerie", "Gare", "Pharmacie", "Hôtel", "Musée", "Cimetière",
-      "Discothèque", "Salle de sport", "Supermarché", "Université", "Port", "Station-service",
+    pairs: [
+      ["Plage", "Piscine"], ["Hôpital", "Pharmacie"], ["École", "Université"], ["Aéroport", "Gare"],
+      ["Marché", "Supermarché"], ["Cinéma", "Théâtre"], ["Stade", "Salle de sport"],
+      ["Bibliothèque", "Librairie"], ["Restaurant", "Maquis"], ["Banque", "Bureau de change"],
+      ["Prison", "Commissariat"], ["Église", "Mosquée"], ["Zoo", "Ferme"], ["Désert", "Savane"],
+      ["Forêt", "Jardin"], ["Montagne", "Colline"], ["Boulangerie", "Pâtisserie"], ["Hôtel", "Auberge"],
+      ["Musée", "Galerie d'art"], ["Discothèque", "Bar"], ["Port", "Fleuve"], ["Station-service", "Garage"],
     ],
   },
   {
-    id: "metiers",
     label: "Métiers",
-    words: [
-      "Médecin", "Enseignant", "Policier", "Pompier", "Cuisinier", "Pilote", "Avocat", "Boulanger",
-      "Mécanicien", "Infirmier", "Journaliste", "Architecte", "Coiffeur", "Plombier", "Électricien",
-      "Agriculteur", "Pêcheur", "Chauffeur de taxi", "Dentiste", "Vétérinaire", "Comptable",
-      "Développeur", "Photographe", "Tailleur", "Footballeur", "Chanteur", "Juge", "Soldat",
-      "Astronaute", "Pharmacien",
+    pairs: [
+      ["Médecin", "Infirmier"], ["Enseignant", "Professeur d'université"], ["Policier", "Gendarme"],
+      ["Pompier", "Secouriste"], ["Cuisinier", "Boulanger"], ["Pilote", "Hôtesse de l'air"],
+      ["Avocat", "Juge"], ["Mécanicien", "Garagiste"], ["Journaliste", "Présentateur télé"],
+      ["Architecte", "Maçon"], ["Coiffeur", "Barbier"], ["Plombier", "Électricien"],
+      ["Agriculteur", "Éleveur"], ["Pêcheur", "Marin"], ["Chauffeur de taxi", "Chauffeur de bus"],
+      ["Dentiste", "Opticien"], ["Vétérinaire", "Médecin"], ["Comptable", "Banquier"],
+      ["Développeur", "Informaticien"], ["Photographe", "Caméraman"], ["Tailleur", "Couturier"],
+      ["Chanteur", "Rappeur"],
     ],
   },
   {
-    id: "objets",
     label: "Objets",
-    words: [
-      "Téléphone", "Parapluie", "Lunettes", "Montre", "Clé", "Ciseaux", "Miroir", "Bougie",
-      "Valise", "Oreiller", "Guitare", "Télévision", "Ventilateur", "Brosse à dents", "Stylo",
-      "Chaise", "Réfrigérateur", "Marteau", "Vélo", "Ballon", "Casque", "Sac à dos", "Lampe",
-      "Ordinateur", "Couteau", "Tapis", "Peigne", "Calculatrice", "Appareil photo", "Horloge",
+    pairs: [
+      ["Téléphone", "Tablette"], ["Parapluie", "Imperméable"], ["Lunettes", "Lentilles"],
+      ["Montre", "Bracelet"], ["Clé", "Cadenas"], ["Ciseaux", "Couteau"], ["Miroir", "Vitre"],
+      ["Bougie", "Lampe torche"], ["Valise", "Sac à dos"], ["Oreiller", "Coussin"], ["Guitare", "Violon"],
+      ["Télévision", "Ordinateur"], ["Ventilateur", "Climatiseur"], ["Brosse à dents", "Peigne"],
+      ["Stylo", "Crayon"], ["Chaise", "Tabouret"], ["Réfrigérateur", "Congélateur"], ["Marteau", "Tournevis"],
+      ["Vélo", "Moto"], ["Ballon", "Bille"], ["Casque", "Écouteurs"], ["Horloge", "Réveil"],
     ],
   },
   {
-    id: "sports",
     label: "Sports",
-    words: [
-      "Football", "Basketball", "Tennis", "Natation", "Boxe", "Lutte", "Judo", "Cyclisme",
-      "Handball", "Volleyball", "Rugby", "Golf", "Ski", "Surf", "Athlétisme", "Marathon",
-      "Karaté", "Équitation", "Escalade", "Badminton", "Ping-pong", "Baseball", "Formule 1",
-      "Patinage", "Plongée", "Escrime", "Gymnastique", "Danse", "Pétanque", "Musculation",
+    pairs: [
+      ["Football", "Rugby"], ["Basketball", "Handball"], ["Tennis", "Badminton"], ["Natation", "Plongée"],
+      ["Boxe", "Karaté"], ["Lutte", "Judo"], ["Cyclisme", "Course à pied"], ["Volleyball", "Beach-volley"],
+      ["Golf", "Pétanque"], ["Ski", "Snowboard"], ["Surf", "Planche à voile"], ["Marathon", "Sprint"],
+      ["Équitation", "Polo"], ["Escalade", "Randonnée"], ["Ping-pong", "Tennis"], ["Baseball", "Cricket"],
+      ["Formule 1", "Rallye"], ["Patinage", "Roller"], ["Escrime", "Kendo"], ["Gymnastique", "Danse"],
     ],
   },
   {
-    id: "pays",
     label: "Pays et villes",
-    words: [
-      "Mali", "Sénégal", "Côte d'Ivoire", "France", "Brésil", "Japon", "Égypte", "Maroc",
-      "Canada", "Chine", "Italie", "Espagne", "États-Unis", "Nigeria", "Ghana", "Paris",
-      "Bamako", "Dakar", "Abidjan", "New York", "Londres", "Dubaï", "Tokyo", "Le Caire",
-      "Tombouctou", "Rome", "Mexique", "Inde", "Russie", "Australie",
+    pairs: [
+      ["Mali", "Burkina Faso"], ["Sénégal", "Gambie"], ["Côte d'Ivoire", "Ghana"], ["France", "Belgique"],
+      ["Brésil", "Argentine"], ["Japon", "Chine"], ["Égypte", "Maroc"], ["Canada", "États-Unis"],
+      ["Italie", "Espagne"], ["Nigeria", "Cameroun"], ["Paris", "Londres"], ["Bamako", "Ouagadougou"],
+      ["Dakar", "Abidjan"], ["New York", "Los Angeles"], ["Dubaï", "Doha"], ["Tokyo", "Séoul"],
+      ["Le Caire", "Marrakech"], ["Tombouctou", "Djenné"], ["Rome", "Athènes"], ["Inde", "Pakistan"],
     ],
   },
   {
-    id: "quotidien",
     label: "Vie quotidienne",
-    words: [
-      "Mariage", "Anniversaire", "Embouteillage", "Vacances", "Examen", "Réveil", "Douche",
-      "Petit-déjeuner", "Sieste", "Déménagement", "Baptême", "Coupure de courant", "Pluie",
-      "Rendez-vous", "Entretien d'embauche", "Match", "Concert", "Voyage", "Pique-nique",
-      "Lessive", "Courses", "Fête", "Diplôme", "Ramadan", "Noël", "Tabaski", "Réunion",
-      "Selfie", "Grasse matinée", "Thé",
+    pairs: [
+      ["Mariage", "Fiançailles"], ["Anniversaire", "Fête"], ["Embouteillage", "Accident"],
+      ["Vacances", "Week-end"], ["Examen", "Interrogation"], ["Réveil", "Alarme"], ["Douche", "Bain"],
+      ["Petit-déjeuner", "Goûter"], ["Sieste", "Nuit"], ["Déménagement", "Voyage"], ["Baptême", "Mariage"],
+      ["Coupure de courant", "Panne d'eau"], ["Pluie", "Orage"], ["Rendez-vous", "Réunion"],
+      ["Entretien d'embauche", "Examen oral"], ["Concert", "Festival"], ["Pique-nique", "Barbecue"],
+      ["Lessive", "Repassage"], ["Ramadan", "Carême"], ["Tabaski", "Noël"], ["Selfie", "Photo de groupe"],
+      ["Thé", "Café"],
     ],
   },
 ];
-
-export function findCategory(id: string): Category | undefined {
-  return categories.find((c) => c.id === id);
-}
-
-export function publicCategories() {
-  return categories.map((c) => ({ id: c.id, label: c.label, count: c.words.length }));
-}

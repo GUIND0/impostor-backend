@@ -5,6 +5,7 @@ import { config } from "./config.js";
 import { RoomManager } from "./game/manager.js";
 import { GameError, type Room } from "./game/room.js";
 import { findById, findByToken, recordGame } from "./players.js";
+import { getCatalog } from "./catalog.js";
 
 const DISCONNECT_GRACE_MS = 8000;
 
@@ -14,6 +15,8 @@ const schemas = {
   kick: z.object({ playerId: z.string().uuid() }),
   settings: z.object({
     rounds: z.number().int().optional(),
+    revealSeconds: z.number().int().optional(),
+    imposterMode: z.enum(["similar", "none"]).optional(),
     clueTurns: z.number().int().optional(),
     category: z.string().optional(),
     turnSeconds: z.number().int().optional(),
@@ -55,7 +58,7 @@ export function createSocketServer(http: HttpServer, log: { error: (obj: unknown
       }).catch((err) => log.error(err, "record game failed"));
     },
     removed: (playerId, code) => io.to(`player:${playerId}`).emit("room:left", { code }),
-  });
+  }, getCatalog);
 
   setInterval(() => manager.sweep(config.roomIdleMinutes * 60 * 1000), 60 * 1000).unref();
 

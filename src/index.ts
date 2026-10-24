@@ -1,12 +1,15 @@
 import { buildApp } from "./app.js";
 import { config } from "./config.js";
 import { migrate, sql, waitForDatabase } from "./db.js";
+import { reloadCatalog, seedCatalog } from "./catalog.js";
 import type { RoomManager } from "./game/manager.js";
 import { createSocketServer } from "./socket.js";
 
 async function main() {
   await waitForDatabase();
   await migrate();
+  await seedCatalog();
+  await reloadCatalog();
 
   let manager: RoomManager | null = null;
   const app = await buildApp(() => manager);

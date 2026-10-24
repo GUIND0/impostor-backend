@@ -13,5 +13,7 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN ?? "*",
   maxAvatarBytes: int(process.env.MAX_AVATAR_BYTES, 5 * 1024 * 1024),
   maxAudioBytes: int(process.env.MAX_AUDIO_BYTES, 3 * 1024 * 1024),
+  adminPassword: process.env.ADMIN_PASSWORD ?? "",
+  adminDir: path.resolve(process.env.ADMIN_DIR ?? "admin"),
   roomIdleMinutes: int(process.env.ROOM_IDLE_MINUTES, 30),
 };

@@ -43,6 +43,22 @@ export async function migrate() {
       primary key (game_id, player_id)
     )`;
   await sql`create index if not exists game_players_player_idx on game_players(player_id)`;
+  await sql`
+    create table if not exists categories (
+      id uuid primary key,
+      name text not null,
+      active boolean not null default true,
+      created_at timestamptz not null default now()
+    )`;
+  await sql`
+    create table if not exists words (
+      id uuid primary key,
+      category_id uuid not null references categories(id) on delete cascade,
+      word text not null,
+      imposter_word text,
+      created_at timestamptz not null default now()
+    )`;
+  await sql`create index if not exists words_category_idx on words(category_id)`;
 }
 
 export async function waitForDatabase(attempts = 30) {

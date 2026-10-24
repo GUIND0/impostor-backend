@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-impostor}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-impostor}
       UPLOADS_DIR: /app/uploads
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - uploads:/app/uploads
     ports:

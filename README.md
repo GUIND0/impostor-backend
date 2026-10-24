@@ -2,7 +2,8 @@
 
 Serveur temps réel du jeu Imposteur, un jeu de bluff et de déduction jouable en ligne à distance.
 Tous les joueurs reçoivent le même mot secret, sauf l'imposteur. Chacun donne un indice à son tour
-(texte ou message vocal), puis tout le monde vote pour démasquer l'imposteur.
+(texte ou message vocal), puis tout le monde vote pour démasquer l'imposteur. Les catégories et les mots
+se gèrent depuis une interface d'administration web.
 
 ## Technologies
 
@@ -18,11 +19,21 @@ Tous les joueurs reçoivent le même mot secret, sauf l'imposteur. Chacun donne 
 2. Un joueur crée une partie et partage le code à 5 caractères.
 3. Les autres rejoignent la partie avec ce code (3 à 12 joueurs).
 4. L'hôte règle les paramètres puis lance la partie.
-5. Chaque joueur touche sa carte pour voir son mot. L'imposteur apprend seulement qu'il est l'imposteur.
+5. Chaque joueur touche sa carte pour voir son mot, dans le temps choisi par l'hôte.
 6. Un ordre de passage est tiré au hasard. À son tour, chacun envoie un indice écrit ou vocal.
 7. Après les tours d'indices, tout le monde vote. Le joueur le plus désigné est accusé (égalité : personne).
-8. L'imposteur peut ensuite tenter de deviner le mot.
+8. En mode classique, l'imposteur peut ensuite tenter de deviner le mot.
 9. Les points sont attribués, puis l'hôte lance la manche suivante.
+
+## Modes de jeu
+
+| Mode | Fonctionnement |
+| --- | --- |
+| Mot similaire (par défaut) | L'imposteur reçoit un mot proche de celui des autres et ne sait pas qu'il est l'imposteur. Pas de devinette en fin de manche. |
+| Classique | L'imposteur ne reçoit aucun mot, sait qu'il est l'imposteur et peut tenter de deviner le mot après le vote. |
+
+En mode mot similaire, seuls les mots qui ont un mot d'imposteur sont tirés. Si la catégorie choisie n'en
+contient aucun, la manche se joue en mode classique.
 
 ## Points
 
@@ -40,14 +51,32 @@ Tous les joueurs reçoivent le même mot secret, sauf l'imposteur. Chacun donne 
 | Paramètre | Valeurs | Défaut |
 | --- | --- | --- |
 | Manches | 1 à 10 | 3 |
+| Temps pour lire son mot | 10 à 120 s | 20 s |
+| Mode | mot similaire / classique | mot similaire |
 | Tours d'indices par manche | 1 à 3 | 2 |
 | Temps par indice | 20 à 180 s | 60 s |
 | Temps de vote | 20 à 180 s | 60 s |
 | Catégorie | aléatoire ou une catégorie précise | aléatoire |
-| L'imposteur voit la catégorie | oui / non | oui |
+| L'imposteur voit la catégorie (mode classique) | oui / non | oui |
 
 Un joueur qui ne joue pas avant la fin du temps passe son tour. Un joueur déconnecté plus de
 8 secondes est ignoré pour les tours et les votes, et retrouve la partie dès qu'il se reconnecte.
+
+## Administration
+
+L'interface d'administration est disponible sur `/admin` (par exemple `http://151.80.60.71:3000/admin`).
+Elle est protégée par le mot de passe défini dans la variable `ADMIN_PASSWORD` du fichier `.env`.
+Sans mot de passe, l'administration est désactivée.
+
+Elle permet de :
+
+- consulter le nombre de joueurs, de parties, de catégories et de mots ;
+- créer, renommer, masquer ou supprimer une catégorie ;
+- ajouter, modifier ou supprimer des mots, chacun avec un mot similaire pour l'imposteur ;
+- importer des mots en masse, un par ligne, au format `Plage ; Piscine`.
+
+Les modifications sont prises en compte immédiatement pour les nouvelles manches. Au premier démarrage,
+la base est remplie avec 8 catégories et environ 170 paires de mots.
 
 ## API HTTP
 
@@ -66,6 +95,20 @@ L'authentification se fait avec le jeton reçu à la création du profil : `Auth
 | POST | `/api/audio` | Envoi d'un indice vocal (multipart, champ `file`, m4a/aac/mp3/ogg/wav) |
 | GET | `/api/rooms/:code` | Informations sur une partie |
 
+Routes d'administration (jeton obtenu avec `/api/admin/login`) :
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| POST | `/api/admin/login` | `{ "password": "..." }`, renvoie un jeton valable 12 heures |
+| GET | `/api/admin/stats` | Statistiques |
+| GET | `/api/admin/categories` | Catégories avec leurs mots |
+| POST | `/api/admin/categories` | Création `{ "name": "..." }` |
+| PATCH | `/api/admin/categories/:id` | Modification `{ "name", "active" }` |
+| DELETE | `/api/admin/categories/:id` | Suppression avec ses mots |
+| POST | `/api/admin/categories/:id/words` | Ajout `{ "words": [{ "word", "imposterWord" }] }` |
+| PUT | `/api/admin/words/:id` | Modification d'un mot |
+| DELETE | `/api/admin/words/:id` | Suppression d'un mot |
+
 Les fichiers envoyés sont servis sous `/uploads/`.
 
 ## Événements Socket.IO
@@ -79,7 +122,7 @@ La connexion se fait avec `auth: { token }`. Chaque action reçoit une réponse
 | `room:join` | `{ code }` |
 | `room:leave` | |
 | `room:sync` | |
-| `room:settings` | `{ rounds, clueTurns, category, turnSeconds, voteSeconds, imposterSeesCategory }` |
+| `room:settings` | `{ rounds, revealSeconds, imposterMode, clueTurns, category, turnSeconds, voteSeconds, imposterSeesCategory }` |
 | `room:kick` | `{ playerId }` |
 | `game:start` | |
 | `game:seen` | |
@@ -122,7 +165,7 @@ cd impostor-backend
 cp .env.example .env
 ```
 
-Renseignez un mot de passe solide dans `POSTGRES_PASSWORD`, puis :
+Renseignez des mots de passe solides dans `POSTGRES_PASSWORD` et `ADMIN_PASSWORD`, puis :
 
 ```bash
 sudo docker compose up -d --build

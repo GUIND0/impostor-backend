@@ -1,10 +1,14 @@
-import { categories, findCategory } from "./words.js";
+import type { Category } from "./words.js";
 import { isCorrectGuess } from "./text.js";
 
 export type Phase = "lobby" | "reveal" | "clues" | "voting" | "guess" | "results" | "finished";
 
+export type ImposterMode = "similar" | "none";
+
 export interface Settings {
   rounds: number;
+  revealSeconds: number;
+  imposterMode: ImposterMode;
   clueTurns: number;
   category: string;
   turnSeconds: number;
@@ -39,7 +43,10 @@ export interface Clue {
 interface Round {
   number: number;
   categoryId: string;
+  categoryLabel: string;
+  mode: ImposterMode;
   word: string;
+  imposterWord: string | null;
   imposterId: string;
   seen: Set<string>;
   order: string[];
@@ -62,10 +69,11 @@ export class GameError extends Error {
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 12;
 export const GUESS_SECONDS = 30;
-export const REVEAL_SECONDS = 20;
 
 export const defaultSettings: Settings = {
   rounds: 3,
+  revealSeconds: 20,
+  imposterMode: "similar",
   clueTurns: 2,
   category: "random",
   turnSeconds: 60,
@@ -74,6 +82,7 @@ export const defaultSettings: Settings = {
 };
 
 export type Random = () => number;
+export type Catalog = () => Category[];
 
 function shuffle<T>(items: T[], random: Random): T[] {
   const copy = [...items];
@@ -98,7 +107,7 @@ export class Room {
   settings: Settings = { ...defaultSettings };
   members = new Map<string, Member>();
   round: Round | null = null;
-  history: { number: number; word: string; imposterId: string; caught: boolean }[] = [];
+  history: { number: number; word: string; imposterWord: string | null; imposterId: string; caught: boolean }[] = [];
   deadline: number | null = null;
   usedWords = new Set<string>();
   previousImposters: string[] = [];
@@ -109,6 +118,7 @@ export class Room {
   constructor(
     public code: string,
     host: Omit<Member, "connected" | "score" | "joinedAt">,
+    private catalog: Catalog,
     private random: Random = Math.random,
     private now: () => number = Date.now,
   ) {
@@ -211,17 +221,33 @@ export class Room {
     const s = { ...this.settings };
     if (patch.rounds !== undefined) s.rounds = clamp(patch.rounds, 1, 10);
     if (patch.clueTurns !== undefined) s.clueTurns = clamp(patch.clueTurns, 1, 3);
+    if (patch.revealSeconds !== undefined) s.revealSeconds = clamp(patch.revealSeconds, 10, 120);
+    if (patch.imposterMode !== undefined) {
+      if (patch.imposterMode !== "similar" && patch.imposterMode !== "none") {
+        throw new GameError("invalid", "Mode inconnu");
+      }
+      s.imposterMode = patch.imposterMode;
+    }
     if (patch.turnSeconds !== undefined) s.turnSeconds = clamp(patch.turnSeconds, 20, 180);
     if (patch.voteSeconds !== undefined) s.voteSeconds = clamp(patch.voteSeconds, 20, 180);
     if (patch.imposterSeesCategory !== undefined) s.imposterSeesCategory = !!patch.imposterSeesCategory;
     if (patch.category !== undefined) {
-      if (patch.category !== "random" && !findCategory(patch.category)) {
+      if (patch.category !== "random" && !this.findCategory(patch.category)) {
         throw new GameError("invalid", "Catégorie inconnue");
       }
       s.category = patch.category;
     }
     this.settings = s;
     this.touch();
+  }
+
+  private findCategory(id: string) {
+    return this.catalog().find((c) => c.id === id && c.words.length > 0);
+  }
+
+  get categoryLabel() {
+    if (this.settings.category === "random") return "Aléatoire";
+    return this.findCategory(this.settings.category)?.label ?? "Aléatoire";
   }
 
   start(by: string) {
@@ -232,18 +258,30 @@ export class Room {
       throw new GameError("not_enough_players", `Il faut au moins ${MIN_PLAYERS} joueurs`);
     }
     for (const m of this.members.values()) m.score = 0;
+    if (!this.catalog().some((c) => c.words.length > 0)) {
+      throw new GameError("no_words", "Aucune catégorie disponible");
+    }
     this.history = [];
     this.startedAt = this.now();
     this.startRound(1);
   }
 
   private startRound(number: number) {
+    const available = this.catalog().filter((c) => c.words.length > 0);
+    const wantsSimilar = this.settings.imposterMode === "similar";
+    const eligible = wantsSimilar ? available.filter((c) => c.words.some((w) => w.imposterWord)) : available;
     const category =
-      this.settings.category === "random" ? pick(categories, this.random) : findCategory(this.settings.category)!;
-    let pool = category.words.filter((w) => !this.usedWords.has(w));
-    if (!pool.length) pool = category.words;
-    const word = pick(pool, this.random);
-    this.usedWords.add(word);
+      (this.settings.category !== "random" ? this.findCategory(this.settings.category) : undefined) ??
+      pick(eligible.length ? eligible : available, this.random);
+    let candidatesWords = category.words;
+    if (wantsSimilar && candidatesWords.some((w) => w.imposterWord)) {
+      candidatesWords = candidatesWords.filter((w) => w.imposterWord);
+    }
+    let pool = candidatesWords.filter((w) => !this.usedWords.has(`${category.id}:${w.word}`));
+    if (!pool.length) pool = candidatesWords;
+    const pair = pick(pool, this.random);
+    this.usedWords.add(`${category.id}:${pair.word}`);
+    const mode: ImposterMode = wantsSimilar && pair.imposterWord ? "similar" : "none";
 
     const ids = [...this.members.keys()];
     const last = this.previousImposters[this.previousImposters.length - 1];
@@ -254,7 +292,10 @@ export class Room {
     this.round = {
       number,
       categoryId: category.id,
-      word,
+      categoryLabel: category.label,
+      mode,
+      word: pair.word,
+      imposterWord: mode === "similar" ? pair.imposterWord : null,
       imposterId,
       seen: new Set(),
       order: [],
@@ -268,7 +309,7 @@ export class Room {
       points: {},
     };
     this.phase = "reveal";
-    this.deadline = this.now() + REVEAL_SECONDS * 1000;
+    this.deadline = this.now() + this.settings.revealSeconds * 1000;
     this.touch();
   }
 
@@ -372,6 +413,10 @@ export class Room {
     const max = Math.max(0, ...tally.values());
     const top = [...tally.entries()].filter(([, n]) => n === max).map(([id]) => id);
     round.accusedId = max > 0 && top.length === 1 ? top[0] : null;
+    if (round.mode === "similar") {
+      this.resolveGuess(null);
+      return;
+    }
     this.phase = "guess";
     this.deadline = this.now() + GUESS_SECONDS * 1000;
     this.touch();
@@ -405,6 +450,7 @@ export class Room {
     this.history.push({
       number: round.number,
       word: round.word,
+      imposterWord: round.imposterWord,
       imposterId: round.imposterId,
       caught: round.accusedId === round.imposterId,
     });
@@ -478,13 +524,19 @@ export class Room {
   view(viewerId: string) {
     const round = this.round;
     const revealed = this.phase === "results" || this.phase === "finished";
+    const member = this.members.has(viewerId);
     const isImposter = round?.imposterId === viewerId;
-    const category = round ? findCategory(round.categoryId) : undefined;
+    const similar = round?.mode === "similar";
+    const knowsRole = isImposter && (!similar || revealed);
+    let word: string | null = null;
+    if (round && member) word = isImposter ? (similar ? round.imposterWord : null) : round.word;
+    const showCategory = !isImposter || similar || this.settings.imposterSeesCategory || revealed;
     return {
       code: this.code,
       hostId: this.hostId,
       phase: this.phase,
       settings: this.settings,
+      categoryLabel: this.categoryLabel,
       deadline: this.deadline,
       serverTime: this.now(),
       members: [...this.members.values()]
@@ -494,11 +546,11 @@ export class Room {
         ? {
             number: round.number,
             totalRounds: this.settings.rounds,
-            category:
-              !isImposter || this.settings.imposterSeesCategory || revealed ? (category?.label ?? null) : null,
+            mode: round.mode,
+            category: showCategory ? round.categoryLabel : null,
             you: {
-              isImposter: this.members.has(viewerId) ? isImposter : false,
-              word: isImposter || !this.members.has(viewerId) ? null : round.word,
+              isImposter: member && knowsRole,
+              word,
               seen: round.seen.has(viewerId),
             },
             seenIds: [...round.seen],
@@ -514,6 +566,7 @@ export class Room {
             result: revealed
               ? {
                   word: round.word,
+                  imposterWord: round.imposterWord,
                   imposterId: round.imposterId,
                   caught: round.accusedId === round.imposterId,
                   guess: round.guess,

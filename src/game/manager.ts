@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { GameError, Room, type Member } from "./room.js";
+import { GameError, Room, type Catalog, type Member } from "./room.js";
 
 type Profile = Pick<Member, "id" | "name" | "avatarUrl">;
 
@@ -16,6 +16,7 @@ export class RoomManager {
       finished: (room: Room) => void;
       removed: (playerId: string, code: string) => void;
     },
+    private catalog: Catalog,
   ) {}
 
   private newCode() {
@@ -37,7 +38,7 @@ export class RoomManager {
 
   create(player: Profile) {
     this.leave(player.id);
-    const room = new Room(this.newCode(), player);
+    const room = new Room(this.newCode(), player, this.catalog);
     this.rooms.set(room.code, room);
     this.playerRoom.set(player.id, room.code);
     this.hooks.changed(room);

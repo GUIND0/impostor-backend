@@ -11,6 +11,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY admin ./admin
 COPY package.json ./
 RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 USER node

@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { GameError, Room, scoreRound } from "../src/game/room.js";
+import type { Category } from "../src/game/words.js";
+
+const catalog: Category[] = [
+  {
+    id: "animaux",
+    label: "Animaux",
+    words: [
+      { word: "Lion", imposterWord: "Tigre" },
+      { word: "Chat", imposterWord: "Chien" },
+      { word: "Aigle", imposterWord: null },
+    ],
+  },
+  { id: "classique", label: "Classique", words: [{ word: "Plage", imposterWord: null }] },
+];
 import { isCorrectGuess, normalizeWord } from "../src/game/text.js";
 
 function seeded(seed = 42) {
@@ -13,8 +27,9 @@ function seeded(seed = 42) {
 function setup(count = 4) {
   let t = 1000;
   const clock = () => t;
-  const room = new Room("ABCD", { id: "p1", name: "P1", avatarUrl: null }, seeded(), clock);
+  const room = new Room("ABCD", { id: "p1", name: "P1", avatarUrl: null }, () => catalog, seeded(), clock);
   for (let i = 2; i <= count; i++) room.addMember({ id: `p${i}`, name: `P${i}`, avatarUrl: null });
+  room.updateSettings("p1", { imposterMode: "none" });
   return { room, advance: (ms: number) => (t += ms) };
 }
 
@@ -143,6 +158,64 @@ describe("Room", () => {
     expect(() => room.addMember({ id: "late", name: "Late", avatarUrl: null })).toThrow(/commencé/);
     room.setConnected("p2", false);
     expect(() => room.addMember({ id: "p2", name: "P2", avatarUrl: null })).not.toThrow();
+  });
+});
+
+describe("similar word mode", () => {
+  it("gives the imposter a similar word without telling them", () => {
+    const { room } = setup();
+    room.updateSettings("p1", { imposterMode: "similar", category: "animaux", rounds: 1, clueTurns: 1 });
+    room.start("p1");
+    const round = room.round!;
+    expect(round.mode).toBe("similar");
+    const imposter = round.imposterId;
+    const v = room.view(imposter);
+    expect(v.round!.you.isImposter).toBe(false);
+    expect(v.round!.you.word).toBe(round.imposterWord);
+    expect(v.round!.you.word).not.toBe(round.word);
+    expect(v.round!.category).toBe("Animaux");
+    const other = [...room.members.keys()].find((id) => id !== imposter)!;
+    expect(room.view(other).round!.you.word).toBe(round.word);
+  });
+
+  it("skips the guess phase and reveals both words", () => {
+    const { room } = setup();
+    room.updateSettings("p1", { imposterMode: "similar", category: "animaux", rounds: 1, clueTurns: 1 });
+    room.start("p1");
+    playToVoting(room);
+    const imposter = room.round!.imposterId;
+    for (const id of room.members.keys()) {
+      room.vote(id, id === imposter ? [...room.members.keys()].find((x) => x !== id)! : imposter);
+    }
+    expect(room.phase).toBe("finished");
+    const v = room.view(imposter);
+    expect(v.round!.result!.imposterWord).toBe(room.round!.imposterWord);
+    expect(v.round!.you.isImposter).toBe(true);
+    expect(room.members.get(imposter)!.score).toBe(0);
+  });
+
+  it("falls back to the classic mode when the category has no similar words", () => {
+    const { room } = setup();
+    room.updateSettings("p1", { imposterMode: "similar", category: "classique" });
+    room.start("p1");
+    expect(room.round!.mode).toBe("none");
+    expect(room.view(room.round!.imposterId).round!.you.isImposter).toBe(true);
+  });
+
+  it("uses the configured reveal time", () => {
+    const { room, advance } = setup();
+    room.updateSettings("p1", { revealSeconds: 10 });
+    room.start("p1");
+    advance(9_000);
+    expect(room.tick()).toBe(false);
+    advance(1_500);
+    expect(room.tick()).toBe(true);
+    expect(room.phase).toBe("clues");
+  });
+
+  it("refuses an unknown category", () => {
+    const { room } = setup();
+    expect(() => room.updateSettings("p1", { category: "inconnue" })).toThrow(/Catégorie/);
   });
 });
 

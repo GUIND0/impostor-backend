@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imposteur - Administration</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #0f0d1a;
+  --surface: #1b1830;
+  --surface-high: #26223f;
+  --border: #332e52;
+  --text: #f4f3f8;
+  --muted: #9ca3af;
+  --primary: #8b5cf6;
+  --primary-hover: #7c4ddf;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  background: var(--surface-high);
+  font-weight: 600;
+}
+button:hover { filter: brightness(1.15); }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--primary); color: #fff; }
+button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+button.ghost { background: transparent; color: var(--muted); padding: 6px 10px; }
+button.ghost:hover { color: var(--text); }
+input, textarea {
+  width: 100%;
+  background: var(--surface-high);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+input:focus, textarea:focus { border-color: var(--primary); }
+textarea { min-height: 140px; resize: vertical; }
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.error { color: var(--danger); min-height: 1.4em; margin: 8px 0 0; }
+
+#login {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 32px 28px;
+}
+.brand { font-weight: 900; letter-spacing: 5px; font-size: 22px; margin: 0; }
+.login-card .brand { text-align: center; }
+.login-card p.muted { text-align: center; margin: 4px 0 24px; }
+.login-card button { width: 100%; margin-top: 12px; padding: 12px; }
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 24px 0;
+}
+.stat { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; }
+.stat strong { display: block; font-size: 24px; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px 24px 40px;
+  align-items: start;
+}
+.panel { background: var(--surface); border-radius: 16px; padding: 16px; }
+.panel h2 { margin: 0 0 12px; font-size: 17px; }
+.new-category { display: flex; gap: 8px; margin-bottom: 12px; }
+.new-category button { flex-shrink: 0; }
+#categoryList { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#categoryList li button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: transparent;
+  font-weight: 500;
+  padding: 10px 12px;
+}
+#categoryList li button:hover { background: var(--surface-high); filter: none; }
+#categoryList li button.active { background: var(--surface-high); box-shadow: inset 3px 0 0 var(--primary); }
+.count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, .15);
+  color: var(--danger);
+  margin-left: 6px;
+}
+
+.detail-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.detail-head input { flex: 1 1 220px; font-size: 18px; font-weight: 700; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; white-space: nowrap; }
+.toggle input { width: auto; accent-color: var(--primary); }
+
+.section-title { margin: 22px 0 10px; font-size: 15px; }
+.add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.actions { width: 1%; white-space: nowrap; text-align: right; }
+td input { padding: 7px 10px; }
+.empty { padding: 40px 10px; text-align: center; color: var(--muted); }
+.hint { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+.bulk-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-high);
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .4);
+  z-index: 10;
+}
+
+@media (max-width: 800px) {
+  header { padding: 12px 16px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 16px 0; }
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 32px; }
+  .add-row { grid-template-columns: 1fr; }
+  th:nth-child(2), td:nth-child(2) { width: 45%; }
+}
+</style>
+</head>
+<body>
+<section id="login">
+  <form class="login-card" id="loginForm">
+    <h1 class="brand">IMPOSTEUR</h1>
+    <p class="muted">Administration</p>
+    <input type="password" id="password" placeholder="Mot de passe" autocomplete="current-password" required>
+    <button class="primary" type="submit">Se connecter</button>
+    <p class="error" id="loginError"></p>
+  </form>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <h1 class="brand">IMPOSTEUR</h1>
+    <button class="ghost" id="logout">Déconnexion</button>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><strong id="statPlayers">-</strong><span>Joueurs</span></div>
+    <div class="stat"><strong id="statGames">-</strong><span>Parties terminées</span></div>
+    <div class="stat"><strong id="statCategories">-</strong><span>Catégories</span></div>
+    <div class="stat"><strong id="statWords">-</strong><span>Mots</span></div>
+  </div>
+
+  <div class="layout">
+    <aside class="panel">
+      <h2>Catégories</h2>
+      <form class="new-category" id="newCategoryForm">
+        <input id="newCategoryName" placeholder="Nouvelle catégorie" maxlength="40" required>
+        <button class="primary" type="submit">Créer</button>
+      </form>
+      <ul id="categoryList"></ul>
+    </aside>
+
+    <main class="panel" id="detail">
+      <div class="empty" id="noSelection">Sélectionnez ou créez une catégorie</div>
+      <div id="categoryView" class="hidden">
+        <div class="detail-head">
+          <input id="categoryName" maxlength="40" aria-label="Nom de la catégorie">
+          <label class="toggle"><input type="checkbox" id="categoryActive"> Visible dans le jeu</label>
+          <button class="danger" id="deleteCategory">Supprimer</button>
+        </div>
+
+        <h3 class="section-title">Ajouter un mot</h3>
+        <form class="add-row" id="addWordForm">
+          <input id="newWord" placeholder="Mot des joueurs" maxlength="60" required>
+          <input id="newImposterWord" placeholder="Mot de l'imposteur (similaire)" maxlength="60">
+          <button class="primary" type="submit">Ajouter</button>
+        </form>
+
+        <h3 class="section-title">Mots (<span id="wordCount">0</span>)</h3>
+        <table>
+          <thead>
+            <tr><th>Mot des joueurs</th><th>Mot de l'imposteur</th><th></th></tr>
+          </thead>
+          <tbody id="wordRows"></tbody>
+        </table>
+        <div class="empty hidden" id="noWords">Aucun mot dans cette catégorie</div>
+
+        <h3 class="section-title">Import en masse</h3>
+        <p class="hint">Un mot par ligne. Séparez le mot de l'imposteur par un point-virgule, par exemple : Plage ; Piscine</p>
+        <textarea id="bulkText" placeholder="Lion ; Tigre&#10;Girafe ; Zèbre"></textarea>
+        <div class="bulk-actions"><button class="primary" id="bulkImport">Importer</button></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<script>
+const state = { token: null, categories: [], selectedId: null };
+const $ = (id) => document.getElementById(id);
+
+try { state.token = sessionStorage.getItem("adminToken"); } catch (e) {}
+
+function toast(message) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    method: options.method || "GET",
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(state.token ? { Authorization: "Bearer " + state.token } : {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "/api/admin/login") {
+    logout();
+    throw new Error("Session expirée");
+  }
+  if (!res.ok) throw new Error(data.message || "Erreur " + res.status);
+  return data;
+}
+
+function showApp(logged) {
+  $("login").classList.toggle("hidden", logged);
+  $("app").classList.toggle("hidden", !logged);
+}
+
+function logout() {
+  state.token = null;
+  try { sessionStorage.removeItem("adminToken"); } catch (e) {}
+  showApp(false);
+}
+
+async function refresh() {
+  const [stats, categories] = await Promise.all([api("/api/admin/stats"), api("/api/admin/categories")]);
+  $("statPlayers").textContent = stats.players;
+  $("statGames").textContent = stats.games;
+  $("statCategories").textContent = stats.categories;
+  $("statWords").textContent = stats.words;
+  state.categories = categories;
+  if (state.selectedId && !categories.some((c) => c.id === state.selectedId)) state.selectedId = null;
+  renderList();
+  renderDetail();
+}
+
+function renderList() {
+  const list = $("categoryList");
+  list.replaceChildren();
+  for (const c of state.categories) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (c.id === state.selectedId) btn.classList.add("active");
+    const name = document.createElement("span");
+    name.textContent = c.name;
+    if (!c.active) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "masquée";
+      name.appendChild(badge);
+    }
+    const count = document.createElement("span");
+    count.className = "count";
+    count.textContent = c.words.length + " mot" + (c.words.length > 1 ? "s" : "");
+    btn.append(name, count);
+    btn.addEventListener("click", () => {
+      state.selectedId = c.id;
+      renderList();
+      renderDetail();
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  }
+}
+
+function selected() {
+  return state.categories.find((c) => c.id === state.selectedId) || null;
+}
+
+function renderDetail() {
+  const cat = selected();
+  $("noSelection").classList.toggle("hidden", !!cat);
+  $("categoryView").classList.toggle("hidden", !cat);
+  if (!cat) return;
+  if (document.activeElement !== $("categoryName")) $("categoryName").value = cat.name;
+  $("categoryActive").checked = cat.active;
+  $("wordCount").textContent = cat.words.length;
+  $("noWords").classList.toggle("hidden", cat.words.length > 0);
+  const rows = $("wordRows");
+  rows.replaceChildren();
+  for (const w of cat.words) rows.appendChild(wordRow(w));
+}
+
+function wordRow(w) {
+  const tr = document.createElement("tr");
+  const wordCell = document.createElement("td");
+  const imposterCell = document.createElement("td");
+  const actions = document.createElement("td");
+  actions.className = "actions";
+
+  const viewMode = () => {
+    wordCell.textContent = w.word;
+    imposterCell.textContent = w.imposterWord || "";
+    if (!w.imposterWord) {
+      const none = document.createElement("span");
+      none.className = "muted";
+      none.textContent = "aucun";
+      imposterCell.appendChild(none);
+    }
+    const edit = document.createElement("button");
+    edit.className = "ghost";
+    edit.textContent = "Modifier";
+    edit.addEventListener("click", editMode);
+    const del = document.createElement("button");
+    del.className = "ghost";
+    del.textContent = "Supprimer";
+    del.addEventListener("click", async () => {
+      if (!confirm("Supprimer « " + w.word + " » ?")) return;
+      try {
+        await api("/api/admin/words/" + w.id, { method: "DELETE" });
+        await refresh();
+      } catch (e) { toast(e.message); }
+    });
+    actions.replaceChildren(edit, del);
+  };
+
+  const editMode = () => {
+    const wordInput = document.createElement("input");
+    wordInput.value = w.word;
+    wordInput.maxLength = 60;
+    const imposterInput = document.createElement("input");
+    imposterInput.value = w.imposterWord || "";
+    imposterInput.maxLength = 60;
+    wordCell.replaceChildren(wordInput);
+    imposterCell.replaceChildren(imposterInput);
+    const save = document.createElement("button");
+    save.className = "primary";
+    save.textContent = "Enregistrer";
+    const cancel = document.createElement("button");
+    cancel.className = "ghost";
+    cancel.textContent = "Annuler";
+    cancel.addEventListener("click", viewMode);
+    const submit = async () => {
+      try {
+        await api("/api/admin/words/" + w.id, {
+          method: "PUT",
+          body: { word: wordInput.value, imposterWord: imposterInput.value },
+        });
+        await refresh();
+        toast("Mot enregistré");
+      } catch (e) { toast(e.message); }
+    };
+    save.addEventListener("click", submit);
+    for (const input of [wordInput, imposterInput]) {
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") submit();
+        if (ev.key === "Escape") viewMode();
+      });
+    }
+    actions.replaceChildren(save, cancel);
+    wordInput.focus();
+  };
+
+  viewMode();
+  tr.append(wordCell, imposterCell, actions);
+  return tr;
+}
+
+$("loginForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("loginError").textContent = "";
+  try {
+    const { token } = await api("/api/admin/login", { method: "POST", body: { password: $("password").value } });
+    state.token = token;
+    try { sessionStorage.setItem("adminToken", token); } catch (e) {}
+    $("password").value = "";
+    showApp(true);
+    await refresh();
+  } catch (e) {
+    $("loginError").textContent = e.message;
+  }
+});
+
+$("logout").addEventListener("click", logout);
+
+$("newCategoryForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try {
+    const { id } = await api("/api/admin/categories", { method: "POST", body: { name: $("newCategoryName").value } });
+    $("newCategoryName").value = "";
+    state.selectedId = id;
+    await refresh();
+    $("newWord").focus();
+  } catch (e) { toast(e.message); }
+});
+
+$("categoryName").addEventListener("change", async () => {
+  const cat = selected();
+  if (!cat) return;
+  try {
+    await api("/api/admin/categories/" + cat.id, { method: "PATCH", body: { name: $("categoryName").value } });
+    await refresh();
+    toast("Catégorie renommée");
+  } catch (e) { toast(e.message); }
+});
+
+$("categoryActive").addEventListener("change", async () => {
+  const cat = selected();
+  if (!cat) return;
+  try {
+    await api("/api/admin/categories/" + cat.id, { method: "PATCH", body: { active: $("categoryActive").checked } });
+    await refresh();
+  } catch (e) { toast(e.message); }
+});
+
+$("deleteCategory").addEventListener("click", async () => {
+  const cat = selected();
+  if (!cat) return;
+  if (!confirm("Supprimer la catégorie « " + cat.name + " » et ses " + cat.words.length + " mots ?")) return;
+  try {
+    await api("/api/admin/categories/" + cat.id, { method: "DELETE" });
+    state.selectedId = null;
+    await refresh();
+  } catch (e) { toast(e.message); }
+});
+
+$("addWordForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const cat = selected();
+  if (!cat) return;
+  try {
+    await api("/api/admin/categories/" + cat.id + "/words", {
+      method: "POST",
+      body: { words: [{ word: $("newWord").value, imposterWord: $("newImposterWord").value }] },
+    });
+    $("newWord").value = "";
+    $("newImposterWord").value = "";
+    $("newWord").focus();
+    await refresh();
+  } catch (e) { toast(e.message); }
+});
+
+$("bulkImport").addEventListener("click", async () => {
+  const cat = selected();
+  if (!cat) return;
+  const words = $("bulkText").value
+    .split("\n")
+    .map((line) => line.split(";"))
+    .map(([word, imposterWord]) => ({ word: (word || "").trim(), imposterWord: (imposterWord || "").trim() }))
+    .filter((p) => p.word);
+  if (!words.length) return toast("Aucun mot à importer");
+  try {
+    const { added } = await api("/api/admin/categories/" + cat.id + "/words", { method: "POST", body: { words } });
+    $("bulkText").value = "";
+    await refresh();
+    toast(added + " mot" + (added > 1 ? "s" : "") + " importé" + (added > 1 ? "s" : ""));
+  } catch (e) { toast(e.message); }
+});
+
+if (state.token) {
+  showApp(true);
+  refresh().catch(() => logout());
+} else {
+  showApp(false);
+}
+</script>
+</body>
+</html>
