@@ -125,7 +125,7 @@ cp .env.example .env
 Renseignez un mot de passe solide dans `POSTGRES_PASSWORD`, puis :
 
 ```bash
-docker compose up -d --build
+sudo docker compose up -d --build
 curl http://localhost:3000/health
 ```
 
@@ -133,7 +133,7 @@ Mise à jour :
 
 ```bash
 git pull
-docker compose up -d --build
+sudo docker compose up -d --build
 ```
 
 Les photos et messages vocaux sont conservés dans le volume `uploads`, la base dans `db-data`.
