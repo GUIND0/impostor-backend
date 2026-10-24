@@ -130,6 +130,24 @@ describe("Room", () => {
     expect(room.round!.imposterId).not.toBe(imposter);
   });
 
+  it("keeps each player's last vote and attributes votes to the right voter", () => {
+    const { room } = setup(5);
+    room.updateSettings("p1", { rounds: 1, clueTurns: 1 });
+    room.start("p1");
+    playToVoting(room);
+    room.vote("p1", "p4");
+    room.vote("p1", "p2");
+    room.vote("p2", "p3");
+    room.vote("p3", "p2");
+    room.vote("p4", "p2");
+    expect(room.view("p2").round!.myVote).toBe("p3");
+    expect(room.view("p5").round!.votes).toBeNull();
+    room.vote("p5", "p1");
+    expect(room.phase).not.toBe("voting");
+    expect(room.view("p1").round!.votes).toEqual({ p1: "p2", p2: "p3", p3: "p2", p4: "p2", p5: "p1" });
+    expect(room.round!.accusedId).toBe("p2");
+  });
+
   it("treats a tie as the imposter escaping", () => {
     const points = scoreRound({
       memberIds: ["a", "b", "c", "d"],
